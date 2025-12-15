@@ -15,19 +15,19 @@ import os                                                          #Interactions
 ## 1/ Check, 
 
 def checkSAM(file): #Verification de l'existence du fichier SAM dans le doc. On verifie dans l'ordre si le chemin est correct, puis l'extension, et on voit si le fichier est vide ou non.
-    if not os.path.isfile(file):
+    if not os.path.isfile(file): 
         print(f"[ERREUR] Le fichier nomme '{file}' n'existe pas.")
         sys.exit(1)
 
-    if not file.endswith(".sam"):
+    if not file.endswith(".sam"): #On vérifie l'extension du fichier.
         print(f"[ERREUR] Le fichier nomme '{file}' doit etre un fichier possedant une extension en .sam")
         sys.exit(1)
 
-    if os.path.getsize(file) == 0:
+    if os.path.getsize(file) == 0: #On vérifie la taille du fichier pour voir si il y a des données à l'intérieur.
         print(f"[ERREUR] Le fichier nomme '{file}' est vide.") 
         sys.exit(1) 
 
-    f = open(file, 'r')
+    f = open(file, 'r') #Ouverture du fichier
 
     for line in f:
         if line.startswith("@"):
@@ -48,7 +48,7 @@ def checkSAM(file): #Verification de l'existence du fichier SAM dans le doc. On 
             f.close()
             sys.exit(1)
 
-    f.close()
+    f.close() #Fermeture du fichier puis validation.
     print("Votre fichier SAM est valide et pret a etre utilise !")
 
 #On passe dès à présent à la lecture du fichier SAM.
@@ -63,7 +63,7 @@ def readSAM(file): #Lit un fichier SAM et ignore les lignes d'en-tete commencant
         for line in f:
             if line.startswith("@"): #Si la ligne commence par un @, alors on peut supprimer ce premier caractere pour de la visibilite.
                 continue
-            sam_lines.append(line.rstrip("\n"))
+            sam_lines.append(line.rstrip("\n")) #On suipprime les caractères à droite de la chaîne
 
     return sam_lines
 
@@ -71,7 +71,7 @@ def readSAM(file): #Lit un fichier SAM et ignore les lignes d'en-tete commencant
 
 def storeSAM(sam_lines):
 
-    flag_counts = defaultdict(int) #On compte desormais les flags, puis les chromosomes, puis les mapq, on s'assure que les valeurs soient entières avec la fonction int.
+    flag_counts = defaultdict(int) #On compte desormais les flags puis les chromosomes, puis les mapq, on s'assure que les valeurs soient entières avec la fonction int.
     chrom_counts = defaultdict(int)
     mapq_counts = defaultdict(int)
 
@@ -100,13 +100,13 @@ def storeSAM(sam_lines):
 #### Conversion du flag en binaire ####
 def flagBinary(flag) :
 
-    flagB = bin(int(flag)) # Transform the integer into a binary.
-    flagB = flagB[2:] # Remove '0b' Example: '0b1001101' > '1001101'
-    flagB = list(flagB) 
-    if len(flagB) < 12: # Size adjustement to 12 (maximal flag size)
+    flagB = bin(int(flag)) #Transformatio en binaire
+    flagB = flagB[2:] # Suppression de certaines valeurs non binaire, comme ici le 0b dans '0b1001101' > '1001101'
+    flagB = list(flagB)  #Nouvelle liste de flags
+    if len(flagB) < 12: # On ajuste la taille à 12 (nombre de colonnes)
         add = 12 - len(flagB) # We compute the difference between the maximal flag size (12) and the length of the binary flag.
         for t in range(add):
-            flagB.insert(0,'0') # We insert 0 to complete until the maximal flag size.
+            flagB.insert(0,'0') #Insertion du 0 pour compléter avant la taille max du flag.
     return flagB
 
 
@@ -117,47 +117,47 @@ def unmapped(sam_line):
     with open ("only_unmapped.fasta", "a+") as unmapped_fasta, open("summary_unmapped.txt", "w") as summary_file: 
         for line in sam_line:
             col_line = line.split("\t")  #On découpe les colonnes
-            flag = flagBinary(col_line[1])
+            flag = flagBinary(col_line[1]) 
 
-            if int(flag[-3]) == 1:     
+            if int(flag[-3]) == 1:     #Si les flags ne sont pas bien mappés, on incrémente la valeur de 1
                 unmapped_count += 1
                 unmapped_fasta.write(tostring(line))
 
-        summary_file.write("Total unmapped reads: " + str(unmapped_count) + "\n") 
+        summary_file.write("Total unmapped reads: " + str(unmapped_count) + "\n")  #On fait un résumé qui indique le nombre total de reads non mappés).
         return unmapped_count
 
 #### Analyze the partially mapped reads ####
-def partiallyMapped(sam_line):
+def partiallyMapped(sam_line): #Nouvelle valeur indiquée, pour voir si les reads sont partiellement mappés
     
-    partially_mapped_count = 0
+    partially_mapped_count = 0  
 
     with open ("only_partially_mapped.fasta", "a+") as partillay_mapped_fasta, open("summary_partially_mapped.txt", "w") as summary_file:
         for line in sam_line:
             col_line = line.split("\t")
             flag = flagBinary(col_line[1]) # We compute the same 
 
-            if int(flag[-2]) == 1: 
-                if col_line[5] != "100M":
-                    partially_mapped_count += 1
-                    partillay_mapped_fasta.write(tostring(line))
+            if int(flag[-2]) == 1:           #Vérification de l'avant-dernier bit du FLAG pour voir si il est égal à 1 (condition spécifique de mapping)
+                if col_line[5] != "100M":     
+                    partially_mapped_count += 1     
+                    partillay_mapped_fasta.write(tostring(line))   #On écrit le nombre de fasta partiellement mappé puis...
 
-        summary_file.write("Total partially mapped reads: " + str(partially_mapped_count) + "\n") 
+        summary_file.write("Total partially mapped reads: " + str(partially_mapped_count) + "\n") #... on en fait un résumé avec le texte + le nombre.
         return partially_mapped_count
 
 
-def filterSAM(sam_lines, mapped_only=False, mapq_max=None):
+def filterSAM(sam_lines, mapped_only=False, mapq_max=None): #On définit un filtre avec des paramètres
    
-    filtered = []
+    filtered = []   #On réalise un dictionnaire ou on filtre les différentes colonnes, par flag et par mapq.
     for line in sam_lines:
         cols = line.split("\t")
-        flag = int(cols[1])
+        flag = int(cols[1]) 
         mapq = int(cols[4])
 
-        # Ignore unmapped reads si mapped_only
+        # Ignorer les reads non mappés si mapped_only
         if mapped_only and (flag & 4):
             continue
 
-        # Ignore reads avec MAPQ >= mapq_max
+        # Ignorer les reads avec MAPQ >= mapq_max
         if mapq_max is not None and mapq >= mapq_max:
             continue
 
@@ -168,13 +168,13 @@ def filterSAM(sam_lines, mapped_only=False, mapq_max=None):
 ### Analyse the CIGAR = regular expression that summarise each read alignment ###
 def readCigar(cigar): 
    
-    ext = re.findall('\w',cigar) # split cigar 
+    ext = re.findall('\w',cigar) # On split le cigar 
     key=[] 
     value=[]    
     val=""
 
-    for i in range(0,len(ext)): # For each numeric values or alpha numeric
-        if (ext[i] == 'M' or ext[i] == 'I' or ext[i] == 'D' or ext[i] == 'S' or ext[i] == 'H' or ext[i] == "N" or ext[i] == 'P'or ext[i] == 'X'or ext[i] == '=') :
+    for i in range(0,len(ext)): #Pour toute valeur numérique ou alphanumérique...
+        if (ext[i] == 'M' or ext[i] == 'I' or ext[i] == 'D' or ext[i] == 'S' or ext[i] == 'H' or ext[i] == "N" or ext[i] == 'P'or ext[i] == 'X'or ext[i] == '=') : #Toutes les valeurs sont indiquées pour chaque lettre.
             key.append(ext[i])
             value.append(val)
             val = ""
@@ -195,26 +195,23 @@ def readCigar(cigar):
 ### Analyse the CIGAR = regular expression that summarise each read alignment ###
 def percentMutation(dico):
         
-    totalValue = 0 # Total number of mutations
+    totalValue = 0 #Nombre total de mutations
     for v in dico :
         totalValue += dico[v]
 
-    mutList = ['M','I','D','S','H','N','P','X','=']
+    mutList = ['M','I','D','S','H','N','P','X','='] #On crée une liste avec chacun des différents évènements pouvant arriver à une séquence d'ADN.
     res = ""
-    for mut in mutList : # Calculated percent of mutation if mut present in the dictionnary, else, percent of mut = 0
+    for mut in mutList : #On calcule le pourcentage de mutation, si la mutation est présente dans le dictionnaire, sinon, le pourcentage est de 0. 
         if mut in dico.keys() :
             res += (str(round((dico[mut] * 100) / totalValue, 2)) + ";")
         else :
             res += ("0.00" + ";")
     return res
 
-def globalPercentCigar():
-    """
-      Global representation of cigar distribution.
-    """
+def globalPercentCigar(): # Representation globale du cigar grâce à une liste
     
     with open ("outpuTable_cigar.txt","r") as outpuTable, open("Final_Cigar_table.txt", "w") as FinalCigar:
-        nbReads, M, I, D, S, H, N, P, X, Egal = [0 for n in range(10)]
+        nbReads, M, I, D, S, H, N, P, X, Egal = [0 for n in range(10)] 
 
         for line in outpuTable :
             mutValues = line.split(";")
@@ -264,14 +261,14 @@ def Summary(total_reads, mapped_reads, flag_counts, chrom_counts, mapq_counts): 
         s.write("MAPQ " + str(q) + " : " + str(mapq_counts[q]) + "\n")  #MAPQ comptés
 
     s.close()
-    print("ResumeGlobalDeLAnalyse.txt")
+    print("ResumeGlobalDeLAnalyse.txt") #Une fois que tout est réalisé, on ferme le fichier et on print le résumé de l'analyse (fichier txt).
    
 #### Main function ####
 
 def main():
 
-    parser = argparse.ArgumentParser(description="SAM File Analyzer")
-
+    parser = argparse.ArgumentParser(description="SAM File Analyzer") #Crée un objet parser qui va analyser les arguments.
+    
     # Argument obligatoire
     parser.add_argument(
         "-i", "--input",
@@ -302,7 +299,6 @@ def main():
     sam_lines = readSAM(args.input)
     sam_lines = filterSAM(sam_lines, mapped_only=args.mapped_only, mapq_max=args.mapq_max)
 
-
     # 3) STORE
     total_reads, mapped_reads, flag_counts, chrom_counts, mapq_counts = storeSAM(sam_lines)
 
@@ -311,5 +307,5 @@ def main():
 
 ############### LAUNCH THE SCRIPT ###############
 
-if __name__ == "__main__":
+if __name__ == "__main__":  #Dernière ligne pour lancer le script en lui-même.
     main()                
